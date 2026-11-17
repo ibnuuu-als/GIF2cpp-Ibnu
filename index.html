@@ -1,0 +1,1436 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dasai Mochi GIF → .INO Converter (RLE SSD1306)</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+          },
+          colors: {
+            base: '#0b0d10',
+            panel: '#131720',
+            borderDark: '#1e2533',
+            accentSky: '#38bdf8',
+            accentGreen: '#22c55e',
+          }
+        }
+      }
+    };
+  </script>
+</head>
+<body class="bg-[#0b0d10] text-slate-200 font-sans antialiased min-h-screen flex flex-col selection:bg-[#38bdf8]/30 selection:text-white">
+
+  <!-- Toast Notification Container (Pengganti alert) -->
+  <div id="toastBox" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- Header -->
+  <header class="border-b border-[#1e2533] bg-[#0b0d10]/90 backdrop-blur sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-[#131720] border border-[#1e2533] flex items-center justify-center shadow-inner">
+          <!-- Ikon Mata Mochi SVG -->
+          <svg class="w-6 h-6 text-[#38bdf8]" viewBox="0 0 32 20" fill="currentColor">
+            <rect x="2" y="2" width="8" height="13" rx="3" />
+            <rect x="22" y="2" width="8" height="13" rx="3" />
+            <path d="M12 15 Q16 19 20 15" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" />
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-base sm:text-lg font-bold tracking-tight text-white flex items-center gap-2">
+            Dasai Mochi GIF → .INO Converter
+            <span class="text-[11px] font-mono font-medium px-2 py-0.5 rounded-md bg-[#38bdf8]/10 text-[#38bdf8] border border-[#38bdf8]/30">
+              RLE SSD1306
+            </span>
+          </h1>
+          <p class="text-xs text-slate-400">
+            Konversi multi-GIF langsung jadi 1 file <span class="font-mono text-slate-300">.ino</span> terkompresi untuk OLED 128×64 &amp; Arduino Uno
+          </p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button id="btnLoadDemo" type="button" class="px-3 py-2 text-xs font-medium rounded-lg bg-[#131720] hover:bg-[#1a202c] text-slate-300 border border-[#1e2533] transition">
+          Muat Contoh Mata
+        </button>
+        <button id="btnClearAll" type="button" class="hidden px-3 py-2 text-xs font-medium rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 transition">
+          Reset Semua
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <!-- KOLOM KIRI (5 Kolom): Upload GIF, Daftar Animasi, & Pengaturan OLED -->
+    <div class="lg:col-span-5 flex flex-col gap-5">
+
+      <!-- 1. Multi-File Drop Zone -->
+      <section class="bg-[#131720] border border-[#1e2533] rounded-2xl p-4 sm:p-5">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-sm font-semibold text-white">1. Pilih File Animasi (.GIF)</h2>
+          <span class="text-[11px] text-slate-400">Bisa pilih banyak sekaligus</span>
+        </div>
+
+        <label id="dropZone" for="gifInput" class="group relative flex flex-col items-center justify-center w-full min-h-[136px] rounded-xl border-2 border-dashed border-[#1e2533] hover:border-[#38bdf8] bg-[#0b0d10]/60 hover:bg-[#38bdf8]/5 transition cursor-pointer p-4 text-center">
+          <input id="gifInput" type="file" accept="image/gif" multiple class="sr-only" />
+          <div class="w-10 h-10 rounded-full bg-[#131720] border border-[#1e2533] group-hover:border-[#38bdf8]/50 flex items-center justify-center mb-2.5 transition">
+            <svg class="w-5 h-5 text-[#38bdf8]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 16V4m0 0l-4 4m4-4l4 4M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2" />
+            </svg>
+          </div>
+          <p class="text-sm font-medium text-slate-200">
+            Klik atau seret file <span class="text-[#38bdf8] font-mono">.gif</span> ke sini
+          </p>
+          <p class="text-xs text-slate-500 mt-1">
+            Otomatis pecah semua frame &amp; kompres RLE 128×64
+          </p>
+        </label>
+
+        <!-- Daftar GIF yang Diunggah -->
+        <div id="gifListContainer" class="mt-4 hidden">
+          <div class="flex items-center justify-between text-xs text-slate-400 mb-2">
+            <span>Urutan Animasi di <span class="font-mono text-slate-300">loop()</span></span>
+            <span id="gifCountBadge" class="font-mono text-[#38bdf8]">0 GIF</span>
+          </div>
+          <ul id="gifList" class="flex flex-col gap-2 max-h-64 overflow-y-auto pr-1"></ul>
+        </div>
+      </section>
+
+      <!-- 2. Kontrol Konversi OLED 128x64 -->
+      <section class="bg-[#131720] border border-[#1e2533] rounded-2xl p-4 sm:p-5 flex flex-col gap-4">
+        <div class="flex items-center justify-between">
+          <h2 class="text-sm font-semibold text-white">2. Pengaturan Layar OLED 128×64</h2>
+          <button id="btnResetSettings" type="button" class="text-xs text-[#38bdf8] hover:underline">
+            Default
+          </button>
+        </div>
+
+        <!-- Ambang Batas (Threshold) -->
+        <div>
+          <div class="flex items-center justify-between text-xs mb-1.5">
+            <label for="thresholdSlider" class="font-medium text-slate-300">Ambang Batas (Threshold)</label>
+            <span id="thresholdVal" class="font-mono font-semibold text-[#38bdf8] bg-[#0b0d10] px-2 py-0.5 rounded border border-[#1e2533]">90</span>
+          </div>
+          <input id="thresholdSlider" type="range" min="0" max="255" value="90" class="w-full h-2 bg-[#0b0d10] rounded-lg appearance-none cursor-pointer accent-[#38bdf8]" />
+          <div class="flex justify-between text-[11px] text-slate-500 mt-1">
+            <span>0 (Terang semua)</span>
+            <span>90 (Rekomendasi)</span>
+            <span>255 (Gelap)</span>
+          </div>
+        </div>
+
+        <!-- Mode Scaling -->
+        <div>
+          <span class="block text-xs font-medium text-slate-300 mb-1.5">Mode Skala Resolusi</span>
+          <div class="grid grid-cols-2 gap-2">
+            <button type="button" data-scale="fit" class="scale-btn px-3 py-2 text-xs font-medium rounded-xl border border-[#38bdf8] bg-[#38bdf8]/15 text-white transition">
+              Fit (Proporsional)
+            </button>
+            <button type="button" data-scale="stretch" class="scale-btn px-3 py-2 text-xs font-medium rounded-xl border border-[#1e2533] bg-[#0b0d10] text-slate-400 hover:text-slate-200 transition">
+              Stretch (Penuh 128×64)
+            </button>
+          </div>
+        </div>
+
+        <!-- Frame Step / Skip & Custom Delay -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label for="frameStepSelect" class="block text-xs font-medium text-slate-300 mb-1.5">Hemat Memori (Skip Frame)</label>
+            <select id="frameStepSelect" class="w-full px-3 py-2 text-xs rounded-xl bg-[#0b0d10] border border-[#1e2533] text-slate-200 focus:outline-none focus:border-[#38bdf8]">
+              <option value="1" selected>Semua Frame (1x)</option>
+              <option value="2">Tiap 2 Frame (0.5x)</option>
+              <option value="3">Tiap 3 Frame (0.33x)</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="customDelayInput" class="block text-xs font-medium text-slate-300 mb-1.5">Custom Delay (ms)</label>
+            <input id="customDelayInput" type="number" min="10" max="5000" step="10" placeholder="Auto (dari GIF)" class="w-full px-3 py-2 text-xs font-mono rounded-xl bg-[#0b0d10] border border-[#1e2533] text-slate-200 placeholder-slate-500 focus:outline-none focus:border-[#38bdf8]" />
+          </div>
+        </div>
+
+        <!-- Invert Warna Checkbox -->
+        <label class="flex items-center justify-between p-3 rounded-xl bg-[#0b0d10] border border-[#1e2533] cursor-pointer hover:border-slate-700 transition">
+          <div>
+            <span class="text-xs font-medium text-slate-200 block">Invert Warna (Negatif)</span>
+            <span class="text-[11px] text-slate-500">Centang jika background GIF putih &amp; mata hitam</span>
+          </div>
+          <input id="invertCheck" type="checkbox" class="w-4 h-4 rounded accent-[#38bdf8] cursor-pointer" />
+        </label>
+      </section>
+
+      <!-- 3. Indikator Memori Flash Arduino Uno -->
+      <section class="bg-[#131720] border border-[#1e2533] rounded-2xl p-4 sm:p-5">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-sm font-semibold text-white">Kapasitas Flash Arduino Uno</h2>
+          <span id="memoryBadge" class="text-[11px] font-mono px-2 py-0.5 rounded-md bg-[#22c55e]/15 text-[#22c55e] border border-[#22c55e]/30">
+            Siap Upload
+          </span>
+        </div>
+
+        <div class="w-full h-3 bg-[#0b0d10] rounded-full overflow-hidden border border-[#1e2533] p-0.5">
+          <div id="memoryBar" class="h-full rounded-full bg-[#22c55e] transition-all duration-300" style="width: 0%"></div>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-between gap-2 mt-2.5 text-xs">
+          <span class="text-slate-400">
+            Data RLE: <strong id="rleSizeText" class="font-mono text-white">0 B (0.00 KB)</strong> / 18.0 KB
+          </span>
+          <span id="compressionStats" class="font-mono text-[11px] text-[#38bdf8]">
+            Mentah: 0 KB (Hemat 0%)
+          </span>
+        </div>
+        <p id="memoryHint" class="text-[11px] text-slate-500 mt-1.5">
+          *Uno punya 32 KB Flash (~13.5 KB terpakai library OLED, sisa ~18 KB aman untuk animasi).
+        </p>
+      </section>
+
+    </div>
+
+    <!-- KOLOM KANAN (7 Kolom): Live OLED Preview & Output Kode .INO -->
+    <div class="lg:col-span-7 flex flex-col gap-5">
+
+      <!-- Live 128x64 OLED Module Preview -->
+      <section class="bg-[#131720] border border-[#1e2533] rounded-2xl p-4 sm:p-5">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-[#22c55e] animate-pulse"></span>
+            <h2 class="text-sm font-semibold text-white">Live Preview Modul OLED 0.96" (128×64)</h2>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <select id="previewScopeSelect" class="px-2.5 py-1.5 text-xs rounded-lg bg-[#0b0d10] border border-[#1e2533] text-slate-200 focus:outline-none focus:border-[#38bdf8]">
+              <option value="all">Semua GIF (Loop)</option>
+            </select>
+            <button id="btnPlayPause" type="button" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-[#38bdf8]/15 hover:bg-[#38bdf8]/25 text-[#38bdf8] border border-[#38bdf8]/30 transition flex items-center gap-1.5">
+              <span id="playPauseIcon">⏸</span>
+              <span id="playPauseLabel">Pause</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Bezel Fisik Modul OLED SSD1306 -->
+        <div class="flex flex-col items-center justify-center py-4 px-2 bg-[#0b0d10] rounded-xl border border-[#1e2533]">
+          <div class="relative bg-[#0e1422] border-2 border-[#253047] rounded-2xl p-3 sm:p-4 shadow-2xl max-w-full">
+            <!-- Lubang Baut & Pin Header OLED -->
+            <div class="flex items-center justify-between px-1 mb-2.5">
+              <span class="w-3 h-3 rounded-full bg-[#0b0d10] border border-slate-600"></span>
+              <div class="flex items-center gap-2.5 text-[9px] font-mono tracking-wider text-slate-400">
+                <span class="flex flex-col items-center"><i class="w-2 h-2 rounded-full bg-amber-300/80 mb-0.5"></i>GND</span>
+                <span class="flex flex-col items-center"><i class="w-2 h-2 rounded-full bg-amber-300/80 mb-0.5"></i>VCC</span>
+                <span class="flex flex-col items-center"><i class="w-2 h-2 rounded-full bg-amber-300/80 mb-0.5"></i>SCL</span>
+                <span class="flex flex-col items-center"><i class="w-2 h-2 rounded-full bg-amber-300/80 mb-0.5"></i>SDA</span>
+              </div>
+              <span class="w-3 h-3 rounded-full bg-[#0b0d10] border border-slate-600"></span>
+            </div>
+
+            <!-- Layar Kaca OLED 128x64 (3x scale = 384x192) -->
+            <div class="relative bg-[#030508] p-1.5 rounded-lg border border-slate-800 shadow-inner">
+              <canvas id="oledCanvas" width="128" height="64" class="w-full max-w-[384px] aspect-[2/1] block bg-black rounded-sm" style="image-rendering: pixelated;"></canvas>
+            </div>
+
+            <!-- Lubang Baut Bawah -->
+            <div class="flex items-center justify-between px-1 mt-2.5">
+              <span class="w-3 h-3 rounded-full bg-[#0b0d10] border border-slate-600"></span>
+              <span class="text-[9px] font-mono text-slate-500">SSD1306 • I2C 0x3C • 128×64</span>
+              <span class="w-3 h-3 rounded-full bg-[#0b0d10] border border-slate-600"></span>
+            </div>
+          </div>
+
+          <!-- Status Frame Counter -->
+          <div class="mt-3 flex flex-wrap items-center justify-center gap-3 text-xs font-mono text-slate-400">
+            <span id="previewStatusText">Belum ada GIF dimuat</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Output Kode .INO Tunggal -->
+      <section class="bg-[#131720] border border-[#1e2533] rounded-2xl p-4 sm:p-5 flex-1 flex flex-col">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+          <div>
+            <h2 class="text-sm font-semibold text-white flex items-center gap-2">
+              3. Output Kode Arduino (<span class="font-mono text-[#22c55e]">dasai_mochi_1file.ino</span>)
+            </h2>
+            <p class="text-xs text-slate-400 mt-0.5">
+              Sudah termasuk <span class="font-mono text-slate-300">decodeFrame()</span> &amp; <span class="font-mono text-slate-300">PROGMEM</span> — langsung upload tanpa file tambahan
+            </p>
+          </div>
+
+          <div class="flex items-center gap-2 w-full sm:w-auto">
+            <button id="btnCopyIno" type="button" class="flex-1 sm:flex-initial px-3.5 py-2 text-xs font-semibold rounded-xl bg-[#1a2232] hover:bg-[#232e44] text-[#38bdf8] border border-[#38bdf8]/40 transition flex items-center justify-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <rect x="9" y="9" width="13" height="13" rx="2" />
+                <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+              </svg>
+              <span id="copyBtnText">Salin Kode .INO</span>
+            </button>
+
+            <button id="btnDownloadIno" type="button" class="flex-1 sm:flex-initial px-4 py-2 text-xs font-semibold rounded-xl bg-[#22c55e] hover:bg-[#16a34a] text-slate-950 transition flex items-center justify-center gap-1.5 shadow-lg shadow-[#22c55e]/15">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3" />
+              </svg>
+              <span>Download .INO</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Code Viewer -->
+        <div class="relative flex-1 min-h-[280px] rounded-xl bg-[#0b0d10] border border-[#1e2533] overflow-hidden">
+          <textarea id="inoOutput" readonly spellcheck="false" class="w-full h-full min-h-[280px] p-4 bg-transparent text-xs font-mono leading-relaxed text-slate-300 resize-y focus:outline-none"></textarea>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <script>
+    /**
+     * =========================================================================
+     * DASAI MOCHI GIF -> .INO CONVERTER (100% Client-Side, Zero Dependencies)
+     * - Native ImageDecoder API + Pure JS GIF89a LZW Compositor Fallback
+     * - Vertical Page Packing (128x64 -> 1024 bytes) for Adafruit_SSD1306
+     * - 4-Mode Custom RLE Compression matching decodeFrame()
+     * =========================================================================
+     */
+
+    // State Aplikasi
+    const state = {
+      gifs: [], // Array of { id, name, width, height, rawFrames: [{ rgba: Uint8ClampedArray, delay: number }], processed: null }
+      threshold: 90,
+      invert: false,
+      scaleMode: 'fit', // 'fit' | 'stretch'
+      frameStep: 1,
+      customDelay: null,
+      previewScope: 'all', // 'all' atau gif.id
+      isPlaying: true,
+      playTimer: null,
+      playAnimIdx: 0,
+      playFrameIdx: 0,
+      inoCode: ''
+    };
+
+    const UNO_SAFE_LIMIT_BYTES = 18 * 1024; // 18.0 KB batas aman PROGMEM di Arduino Uno
+
+    // Elemen DOM
+    const el = {
+      dropZone: document.getElementById('dropZone'),
+      gifInput: document.getElementById('gifInput'),
+      gifListContainer: document.getElementById('gifListContainer'),
+      gifList: document.getElementById('gifList'),
+      gifCountBadge: document.getElementById('gifCountBadge'),
+      thresholdSlider: document.getElementById('thresholdSlider'),
+      thresholdVal: document.getElementById('thresholdVal'),
+      invertCheck: document.getElementById('invertCheck'),
+      frameStepSelect: document.getElementById('frameStepSelect'),
+      customDelayInput: document.getElementById('customDelayInput'),
+      scaleBtns: document.querySelectorAll('.scale-btn'),
+      memoryBadge: document.getElementById('memoryBadge'),
+      memoryBar: document.getElementById('memoryBar'),
+      rleSizeText: document.getElementById('rleSizeText'),
+      compressionStats: document.getElementById('compressionStats'),
+      memoryHint: document.getElementById('memoryHint'),
+      previewScopeSelect: document.getElementById('previewScopeSelect'),
+      btnPlayPause: document.getElementById('btnPlayPause'),
+      playPauseIcon: document.getElementById('playPauseIcon'),
+      playPauseLabel: document.getElementById('playPauseLabel'),
+      oledCanvas: document.getElementById('oledCanvas'),
+      previewStatusText: document.getElementById('previewStatusText'),
+      inoOutput: document.getElementById('inoOutput'),
+      btnCopyIno: document.getElementById('btnCopyIno'),
+      copyBtnText: document.getElementById('copyBtnText'),
+      btnDownloadIno: document.getElementById('btnDownloadIno'),
+      btnLoadDemo: document.getElementById('btnLoadDemo'),
+      btnClearAll: document.getElementById('btnClearAll'),
+      btnResetSettings: document.getElementById('btnResetSettings'),
+      toastBox: document.getElementById('toastBox'),
+    };
+
+    // Canvas offscreen untuk resizing & sampling piksel 128x64
+    const workCanvas = document.createElement('canvas');
+    workCanvas.width = 128;
+    workCanvas.height = 64;
+    const workCtx = workCanvas.getContext('2d', { willReadFrequently: true });
+
+    const srcCanvas = document.createElement('canvas');
+    const srcCtx = srcCanvas.getContext('2d', { willReadFrequently: true });
+
+    // -------------------------------------------------------------------------
+    // Toast Notification (Pengganti alert)
+    // -------------------------------------------------------------------------
+    function showToast(message, type = 'info') {
+      const colors = {
+        info: 'bg-[#131720] border-[#38bdf8]/50 text-slate-100',
+        success: 'bg-[#131720] border-[#22c55e]/60 text-[#22c55e]',
+        error: 'bg-[#131720] border-red-500/60 text-red-400',
+      };
+      const div = document.createElement('div');
+      div.className = `pointer-events-auto px-4 py-2.5 rounded-xl border text-xs font-medium shadow-xl transition-all duration-300 ${colors[type] || colors.info}`;
+      div.textContent = message;
+      el.toastBox.appendChild(div);
+      setTimeout(() => {
+        div.style.opacity = '0';
+        div.style.transform = 'translateY(6px)';
+        setTimeout(() => div.remove(), 300);
+      }, 2800);
+    }
+
+    // -------------------------------------------------------------------------
+    // 1. MULTI-FRAME GIF DECODING (Primary: ImageDecoder API, Fallback: GIF89a)
+    // -------------------------------------------------------------------------
+    async function decodeGifFile(arrayBuffer) {
+      // Coba jalur utama: Native ImageDecoder API
+      if ('ImageDecoder' in window) {
+        try {
+          const supported = await ImageDecoder.isTypeSupported('image/gif');
+          if (supported) {
+            const decoder = new ImageDecoder({ data: arrayBuffer.slice(0), type: 'image/gif' });
+            await decoder.tracks.ready;
+            const track = decoder.tracks.selectedTrack;
+            const frameCount = track.frameCount;
+
+            if (frameCount > 0) {
+              const rawFrames = [];
+              let width = 128;
+              let height = 64;
+
+              for (let i = 0; i < frameCount; i++) {
+                const res = await decoder.decode({ frameIndex: i });
+                const vFrame = res.image;
+                width = vFrame.displayWidth;
+                height = vFrame.displayHeight;
+
+                if (srcCanvas.width !== width || srcCanvas.height !== height) {
+                  srcCanvas.width = width;
+                  srcCanvas.height = height;
+                }
+                srcCtx.clearRect(0, 0, width, height);
+                srcCtx.drawImage(vFrame, 0, 0, width, height);
+                const imgData = srcCtx.getImageData(0, 0, width, height);
+
+                // VideoFrame.duration dalam mikrodetik -> ubah ke ms
+                const delayMs = vFrame.duration && vFrame.duration > 0
+                  ? Math.max(10, Math.round(vFrame.duration / 1000))
+                  : 100;
+
+                rawFrames.push({
+                  rgba: new Uint8ClampedArray(imgData.data),
+                  delay: delayMs
+                });
+                vFrame.close();
+              }
+              decoder.close();
+              return { width, height, rawFrames };
+            }
+            decoder.close();
+          }
+        } catch (err) {
+          console.warn('ImageDecoder fallback ke parser GIF89a manual:', err);
+        }
+      }
+
+      // Jalur Fallback: Pure-JS Binary GIF89a Parser & LZW Decompressor
+      return parseGif89aBinary(arrayBuffer);
+    }
+
+    // Pure-JS GIF89a Binary Parser + LZW Decompressor + Frame Compositor
+    function parseGif89aBinary(buffer) {
+      const bytes = new Uint8Array(buffer);
+      let pos = 0;
+
+      const readByte = () => bytes[pos++];
+      const readUint16 = () => {
+        const v = bytes[pos] | (bytes[pos + 1] << 8);
+        pos += 2;
+        return v;
+      };
+      const readSubBlocks = () => {
+        const chunks = [];
+        let totalLen = 0;
+        while (pos < bytes.length) {
+          const size = readByte();
+          if (size === 0) break;
+          const slice = bytes.subarray(pos, pos + size);
+          chunks.push(slice);
+          totalLen += slice.length;
+          pos += size;
+        }
+        const out = new Uint8Array(totalLen);
+        let offset = 0;
+        for (const c of chunks) {
+          out.set(c, offset);
+          offset += c.length;
+        }
+        return out;
+      };
+
+      // Header ("GIF87a" / "GIF89a")
+      const sig = String.fromCharCode(...bytes.subarray(0, 6));
+      if (!sig.startsWith('GIF')) {
+        throw new Error('File bukan format GIF yang valid.');
+      }
+      pos = 6;
+
+      // Logical Screen Descriptor
+      const width = readUint16();
+      const height = readUint16();
+      const packed = readByte();
+      const gctFlag = (packed & 0x80) !== 0;
+      const gctSize = 1 << ((packed & 0x07) + 1);
+      readByte(); // bgColorIndex
+      readByte(); // pixelAspectRatio
+
+      let gct = null;
+      if (gctFlag) {
+        gct = bytes.subarray(pos, pos + gctSize * 3);
+        pos += gctSize * 3;
+      }
+
+      // Compositor RGBA buffer persisten
+      const comp = new Uint8ClampedArray(width * height * 4);
+      for (let i = 3; i < comp.length; i += 4) comp[i] = 255; // background hitam solid
+
+      const rawFrames = [];
+      let gce = { disposal: 0, delayMs: 100, hasTransparency: false, transparentIdx: 0 };
+
+      while (pos < bytes.length) {
+        const blockId = readByte();
+        if (blockId === 0x3B) {
+          // Trailer
+          break;
+        } else if (blockId === 0x21) {
+          // Extension Introducer
+          const label = readByte();
+          if (label === 0xF9) {
+            // Graphic Control Extension
+            const blockSize = readByte(); // harusnya 4
+            const gcePacked = readByte();
+            const delayCs = readUint16();
+            const transIdx = readByte();
+            readByte(); // block terminator 0x00
+
+            gce = {
+              disposal: (gcePacked >> 2) & 0x07,
+              hasTransparency: (gcePacked & 0x01) !== 0,
+              delayMs: delayCs > 0 ? delayCs * 10 : 100,
+              transparentIdx: transIdx
+            };
+          } else {
+            // Skip extension sub-blocks
+            readSubBlocks();
+          }
+        } else if (blockId === 0x2C) {
+          // Image Descriptor
+          const left = readUint16();
+          const top = readUint16();
+          const imgW = readUint16();
+          const imgH = readUint16();
+          const imgPacked = readByte();
+          const lctFlag = (imgPacked & 0x80) !== 0;
+          const interlaceFlag = (imgPacked & 0x40) !== 0;
+          const lctSize = 1 << ((imgPacked & 0x07) + 1);
+
+          let activeColorTable = gct;
+          if (lctFlag) {
+            activeColorTable = bytes.subarray(pos, pos + lctSize * 3);
+            pos += lctSize * 3;
+          }
+
+          const minCodeSize = readByte();
+          const lzwData = readSubBlocks();
+          const pixelIndices = decodeLZW(minCodeSize, lzwData, imgW * imgH);
+
+          // Simpan state sebelum gambar jika disposal == 3 (Restore to Previous)
+          let prevComp = null;
+          if (gce.disposal === 3) {
+            prevComp = new Uint8ClampedArray(comp);
+          }
+
+          // De-interlace jika perlu
+          const rowMap = new Int32Array(imgH);
+          if (interlaceFlag) {
+            let srcRow = 0;
+            const passes = [
+              [0, 8],
+              [4, 8],
+              [2, 4],
+              [1, 2]
+            ];
+            for (const [start, step] of passes) {
+              for (let y = start; y < imgH; y += step) {
+                rowMap[y] = srcRow++;
+              }
+            }
+          } else {
+            for (let y = 0; y < imgH; y++) rowMap[y] = y;
+          }
+
+          // Gambar frame ke compositor
+          for (let y = 0; y < imgH; y++) {
+            const dstY = top + y;
+            if (dstY < 0 || dstY >= height) continue;
+            const mappedY = rowMap[y];
+            for (let x = 0; x < imgW; x++) {
+              const dstX = left + x;
+              if (dstX < 0 || dstX >= width) continue;
+              const cIdx = pixelIndices[mappedY * imgW + x];
+              if (gce.hasTransparency && cIdx === gce.transparentIdx) continue;
+
+              const ctOffset = cIdx * 3;
+              const compOffset = (dstY * width + dstX) * 4;
+              comp[compOffset] = activeColorTable ? activeColorTable[ctOffset] : 0;
+              comp[compOffset + 1] = activeColorTable ? activeColorTable[ctOffset + 1] : 0;
+              comp[compOffset + 2] = activeColorTable ? activeColorTable[ctOffset + 2] : 0;
+              comp[compOffset + 3] = 255;
+            }
+          }
+
+          // Snapshot frame hasil komposisi
+          rawFrames.push({
+            rgba: new Uint8ClampedArray(comp),
+            delay: gce.delayMs
+          });
+
+          // Terapkan disposal method
+          if (gce.disposal === 2) {
+            // Restore to background (hitam)
+            for (let y = 0; y < imgH; y++) {
+              const dstY = top + y;
+              if (dstY < 0 || dstY >= height) continue;
+              for (let x = 0; x < imgW; x++) {
+                const dstX = left + x;
+                if (dstX < 0 || dstX >= width) continue;
+                const compOffset = (dstY * width + dstX) * 4;
+                comp[compOffset] = 0;
+                comp[compOffset + 1] = 0;
+                comp[compOffset + 2] = 0;
+                comp[compOffset + 3] = 255;
+              }
+            }
+          } else if (gce.disposal === 3 && prevComp) {
+            comp.set(prevComp);
+          }
+
+          // Reset GCE untuk frame berikutnya
+          gce = { disposal: 0, delayMs: 100, hasTransparency: false, transparentIdx: 0 };
+        } else {
+          break;
+        }
+      }
+
+      if (rawFrames.length === 0) {
+        throw new Error('Tidak ada frame gambar yang ditemukan di dalam GIF.');
+      }
+
+      return { width, height, rawFrames };
+    }
+
+    // LZW Decompressor untuk GIF89a
+    function decodeLZW(minCodeSize, data, expectedPixels) {
+      const clearCode = 1 << minCodeSize;
+      const eoiCode = clearCode + 1;
+      let codeSize = minCodeSize + 1;
+      let nextCode = eoiCode + 1;
+
+      const prefix = new Int32Array(4096);
+      const suffix = new Uint8Array(4096);
+      const pixelStack = new Uint8Array(4097);
+
+      const output = new Uint8Array(expectedPixels);
+      let outPos = 0;
+
+      let bitBuffer = 0;
+      let bitsInBuffer = 0;
+      let bytePos = 0;
+
+      const readCode = () => {
+        while (bitsInBuffer < codeSize) {
+          if (bytePos >= data.length) return -1;
+          bitBuffer |= data[bytePos++] << bitsInBuffer;
+          bitsInBuffer += 8;
+        }
+        const code = bitBuffer & ((1 << codeSize) - 1);
+        bitBuffer >>= codeSize;
+        bitsInBuffer -= codeSize;
+        return code;
+      };
+
+      let prevCode = -1;
+      let firstChar = 0;
+
+      while (outPos < expectedPixels) {
+        const code = readCode();
+        if (code < 0 || code === eoiCode) break;
+
+        if (code === clearCode) {
+          codeSize = minCodeSize + 1;
+          nextCode = eoiCode + 1;
+          prevCode = -1;
+          continue;
+        }
+
+        let inCode = code;
+        let stackTop = 0;
+
+        if (code >= nextCode) {
+          if (prevCode === -1) break;
+          pixelStack[stackTop++] = firstChar;
+          inCode = prevCode;
+        }
+
+        while (inCode >= clearCode) {
+          pixelStack[stackTop++] = suffix[inCode];
+          inCode = prefix[inCode];
+        }
+
+        firstChar = inCode;
+        pixelStack[stackTop++] = firstChar;
+
+        while (stackTop > 0 && outPos < expectedPixels) {
+          output[outPos++] = pixelStack[--stackTop];
+        }
+
+        if (prevCode !== -1 && nextCode < 4096) {
+          prefix[nextCode] = prevCode;
+          suffix[nextCode] = firstChar;
+          nextCode++;
+          if (nextCode === (1 << codeSize) && codeSize < 12) {
+            codeSize++;
+          }
+        }
+
+        prevCode = code;
+      }
+
+      return output;
+    }
+
+    // -------------------------------------------------------------------------
+    // 2. SSD1306 128x64 BUFFER PACKING & 4-MODE CUSTOM RLE COMPRESSION
+    // -------------------------------------------------------------------------
+    function processSingleGif(gifObj) {
+      const { width, height, rawFrames } = gifObj;
+      const step = state.frameStep;
+      const threshold = state.threshold;
+      const invert = state.invert;
+      const scaleMode = state.scaleMode;
+
+      // Siapkan ukuran sumber
+      if (srcCanvas.width !== width || srcCanvas.height !== height) {
+        srcCanvas.width = width;
+        srcCanvas.height = height;
+      }
+
+      // Hitung geometri Fit vs Stretch di kanvas 128x64
+      let drawX = 0, drawY = 0, drawW = 128, drawH = 64;
+      if (scaleMode === 'fit') {
+        const ratio = Math.min(128 / width, 64 / height);
+        drawW = Math.max(1, Math.round(width * ratio));
+        drawH = Math.max(1, Math.round(height * ratio));
+        drawX = Math.floor((128 - drawW) / 2);
+        drawY = Math.floor((64 - drawH) / 2);
+      }
+
+      workCtx.imageSmoothingEnabled = true;
+      workCtx.imageSmoothingQuality = 'high';
+
+      const binaryFrames = []; // Array of Uint8Array(128 * 64) untuk preview cepat
+      const compressedChunks = [];
+      let totalDelaySum = 0;
+      let sampledCount = 0;
+
+      // Maksimal 255 frame per animasi agar aman dengan uint8_t count di Arduino
+      for (let i = 0; i < rawFrames.length && sampledCount < 255; i += step) {
+        const frame = rawFrames[i];
+        totalDelaySum += frame.delay * step;
+        sampledCount++;
+
+        // Render RGBA asli ke srcCanvas
+        const srcImgData = new ImageData(frame.rgba, width, height);
+        srcCtx.putImageData(srcImgData, 0, 0);
+
+        // Gambar ke workCanvas 128x64 dengan latar hitam
+        workCtx.fillStyle = '#000000';
+        workCtx.fillRect(0, 0, 128, 64);
+        workCtx.drawImage(srcCanvas, drawX, drawY, drawW, drawH);
+
+        const outPixels = workCtx.getImageData(0, 0, 128, 64).data;
+        const binMap = new Uint8Array(128 * 64);
+
+        // Thresholding ke biner 0 / 1
+        for (let p = 0; p < 128 * 64; p++) {
+          const idx = p * 4;
+          const alphaNorm = outPixels[idx + 3] / 255;
+          const lum = (0.299 * outPixels[idx] + 0.587 * outPixels[idx + 1] + 0.114 * outPixels[idx + 2]) * alphaNorm;
+          let isOn = lum >= threshold;
+          if (invert) isOn = !isOn;
+          binMap[p] = isOn ? 1 : 0;
+        }
+        binaryFrames.push(binMap);
+
+        // Pack ke buffer vertikal SSD1306 (8 page x 128 kolom = 1024 byte)
+        const ssdBuf = new Uint8Array(1024);
+        for (let page = 0; page < 8; page++) {
+          for (let x = 0; x < 128; x++) {
+            let b = 0;
+            for (let bit = 0; bit < 8; bit++) {
+              const y = page * 8 + bit;
+              if (binMap[y * 128 + x]) {
+                b |= (1 << bit);
+              }
+            }
+            ssdBuf[page * 128 + x] = b;
+          }
+        }
+
+        // Kompresi 4-Mode RLE
+        compressedChunks.push(rleEncodeFrame(ssdBuf));
+      }
+
+      // Gabungkan seluruh frame terkompresi menjadi 1 Uint8Array
+      const rleTotalLen = compressedChunks.reduce((acc, c) => acc + c.length, 0);
+      const rleBytes = new Uint8Array(rleTotalLen);
+      let offset = 0;
+      for (const c of compressedChunks) {
+        rleBytes.set(c, offset);
+        offset += c.length;
+      }
+
+      const autoDelay = sampledCount > 0 ? Math.max(10, Math.round(totalDelaySum / sampledCount)) : 100;
+      const effectiveDelay = state.customDelay !== null && state.customDelay > 0 ? state.customDelay : autoDelay;
+
+      gifObj.processed = {
+        frameCount: sampledCount,
+        delayMs: effectiveDelay,
+        autoDelayMs: autoDelay,
+        binaryFrames,
+        rleBytes,
+        rleSize: rleBytes.length,
+        rawSize: sampledCount * 1024
+      };
+    }
+
+    // Algoritma Kompresi RLE 4-Mode (100% cocok dengan decodeFrame di Arduino)
+    function rleEncodeFrame(frame) {
+      const out = [];
+      let i = 0;
+      const n = frame.length;
+
+      while (i < n) {
+        const val = frame[i];
+        let run = 1;
+        while (i + run < n && frame[i + run] === val && run < 64) {
+          run++;
+        }
+
+        if (val === 0x00) {
+          // Mode 0 (00xxxxxx): run byte 0x00 (1..64)
+          out.push(run - 1);
+          i += run;
+        } else if (val === 0xFF) {
+          // Mode 1 (01xxxxxx): run byte 0xFF (1..64)
+          out.push((1 << 6) | (run - 1));
+          i += run;
+        } else if (run >= 2) {
+          // Mode 2 (10xxxxxx + 1 byte v): run byte berulang selain 0x00 & 0xFF
+          out.push((2 << 6) | (run - 1));
+          out.push(val);
+          i += run;
+        } else {
+          // Mode 3 (11xxxxxx + litLen bytes): literal byte non-repeating selain 0x00 & 0xFF
+          const litStart = i;
+          let litLen = 0;
+          while (i < n && litLen < 64) {
+            const cur = frame[i];
+            if (cur === 0x00 || cur === 0xFF) break;
+            if (i + 1 < n && frame[i + 1] === cur) break;
+            litLen++;
+            i++;
+          }
+          out.push((3 << 6) | (litLen - 1));
+          for (let k = 0; k < litLen; k++) {
+            out.push(frame[litStart + k]);
+          }
+        }
+      }
+
+      return new Uint8Array(out);
+    }
+
+    // Format array byte menjadi hex C++ rapi (24 byte per baris)
+    function formatHexArray(bytes, perLine = 24) {
+      const lines = [];
+      for (let i = 0; i < bytes.length; i += perLine) {
+        const chunk = bytes.subarray(i, i + perLine);
+        const hexParts = new Array(chunk.length);
+        for (let j = 0; j < chunk.length; j++) {
+          hexParts[j] = '0x' + chunk[j].toString(16).padStart(2, '0');
+        }
+        lines.push(hexParts.join(',') + ',');
+      }
+      return lines.join('\n');
+    }
+
+    // -------------------------------------------------------------------------
+    // 3. GENERATE KODE .INO TUNGGAL & UPDATE UI
+    // -------------------------------------------------------------------------
+    function reprocessAll() {
+      for (const g of state.gifs) {
+        processSingleGif(g);
+      }
+      renderGifList();
+      updateMemoryStats();
+      generateInoCode();
+      restartPreviewLoop();
+    }
+
+    function generateInoCode() {
+      if (state.gifs.length === 0) {
+        state.inoCode = `// Belum ada file .GIF yang dimuat.\n// Seret atau pilih file .GIF Dasai Mochi di panel sebelah kiri untuk generate kode .INO otomatis.`;
+        el.inoOutput.value = state.inoCode;
+        return;
+      }
+
+      const animBlocks = [];
+      const loopCalls = [];
+
+      state.gifs.forEach((g, idx) => {
+        const num = idx + 1;
+        const p = g.processed;
+        animBlocks.push(
+`// Sumber: ${g.name} (${p.frameCount} frame, RLE: ${p.rleSize} byte)
+#define ANIM${num}_FRAMES ${p.frameCount}
+#define ANIM${num}_DELAY ${p.delayMs}
+const uint8_t anim${num}[] PROGMEM = {
+${formatHexArray(p.rleBytes, 24)}
+};`
+        );
+        loopCalls.push(`  playAnim(anim${num}, ANIM${num}_FRAMES, ANIM${num}_DELAY);`);
+      });
+
+      state.inoCode = `#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+
+#define OLED_ADDR 0x3C   // kalau layar kosong, coba 0x3D
+
+Adafruit_SSD1306 display(128, 64, &Wire, -1);
+
+${animBlocks.join('\n\n')}
+
+// Decompress 1 frame RLE langsung ke buffer OLED 128x64
+const uint8_t* decodeFrame(const uint8_t* p, uint8_t* buf) {
+  uint16_t n = 0;
+  while (n < 1024) {
+    uint8_t t = pgm_read_byte(p++);
+    uint8_t c = (t & 63) + 1;
+    switch (t >> 6) {
+      case 0: while (c--) buf[n++] = 0x00; break;
+      case 1: while (c--) buf[n++] = 0xFF; break;
+      case 2: {
+        uint8_t v = pgm_read_byte(p++);
+        while (c--) buf[n++] = v;
+        break;
+      }
+      default: while (c--) buf[n++] = pgm_read_byte(p++);
+    }
+  }
+  return p;
+}
+
+void playAnim(const uint8_t* data, uint8_t count, uint16_t frameDelay) {
+  uint8_t* buf = display.getBuffer();
+  const uint8_t* p = data;
+  for (uint8_t i = 0; i < count; i++) {
+    p = decodeFrame(p, buf);
+    display.display();
+    delay(frameDelay);
+  }
+}
+
+void setup() {
+  // Uno: SDA = A4, SCL = A5 | ESP32-C3: Wire.begin(SDA, SCL) sesuai board
+  if (!display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDR)) {
+    for (;;);  // OLED gak kedetek
+  }
+  Wire.setClock(400000);
+  display.clearDisplay();
+  display.display();
+}
+
+void loop() {
+${loopCalls.join('\n')}
+}
+`;
+      el.inoOutput.value = state.inoCode;
+    }
+
+    function updateMemoryStats() {
+      let totalRle = 0;
+      let totalRaw = 0;
+      for (const g of state.gifs) {
+        if (g.processed) {
+          totalRle += g.processed.rleSize;
+          totalRaw += g.processed.rawSize;
+        }
+      }
+
+      const rleKB = (totalRle / 1024).toFixed(2);
+      const rawKB = (totalRaw / 1024).toFixed(1);
+      const savedPct = totalRaw > 0 ? Math.max(0, Math.round((1 - totalRle / totalRaw) * 100)) : 0;
+
+      el.rleSizeText.textContent = `${totalRle.toLocaleString('id-ID')} B (${rleKB} KB)`;
+      el.compressionStats.textContent = `Mentah: ${rawKB} KB (Hemat ${savedPct}%)`;
+
+      const pct = Math.min(100, (totalRle / UNO_SAFE_LIMIT_BYTES) * 100);
+      el.memoryBar.style.width = `${pct}%`;
+
+      if (totalRle === 0) {
+        el.memoryBar.className = 'h-full rounded-full bg-[#22c55e] transition-all duration-300';
+        el.memoryBadge.className = 'text-[11px] font-mono px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 border border-[#1e2533]';
+        el.memoryBadge.textContent = 'Kosong';
+      } else if (totalRle <= 15 * 1024) {
+        el.memoryBar.className = 'h-full rounded-full bg-[#22c55e] transition-all duration-300';
+        el.memoryBadge.className = 'text-[11px] font-mono px-2 py-0.5 rounded-md bg-[#22c55e]/15 text-[#22c55e] border border-[#22c55e]/30';
+        el.memoryBadge.textContent = 'Aman untuk Uno';
+      } else if (totalRle <= UNO_SAFE_LIMIT_BYTES) {
+        el.memoryBar.className = 'h-full rounded-full bg-amber-400 transition-all duration-300';
+        el.memoryBadge.className = 'text-[11px] font-mono px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-300 border border-amber-500/30';
+        el.memoryBadge.textContent = 'Hampir Penuh';
+      } else {
+        el.memoryBar.className = 'h-full rounded-full bg-red-500 transition-all duration-300';
+        el.memoryBadge.className = 'text-[11px] font-mono px-2 py-0.5 rounded-md bg-red-500/15 text-red-400 border border-red-500/30';
+        el.memoryBadge.textContent = 'Kegedean buat Uno!';
+      }
+    }
+
+    function renderGifList() {
+      const hasGifs = state.gifs.length > 0;
+      el.gifListContainer.classList.toggle('hidden', !hasGifs);
+      el.btnClearAll.classList.toggle('hidden', !hasGifs);
+      el.gifCountBadge.textContent = `${state.gifs.length} GIF`;
+
+      // Update dropdown scope preview
+      const prevScope = state.previewScope;
+      el.previewScopeSelect.innerHTML = `<option value="all">Semua GIF (Loop)</option>`;
+      state.gifs.forEach((g, idx) => {
+        const opt = document.createElement('option');
+        opt.value = g.id;
+        opt.textContent = `anim${idx + 1}: ${g.name}`;
+        el.previewScopeSelect.appendChild(opt);
+      });
+      if ([...el.previewScopeSelect.options].some(o => o.value === prevScope)) {
+        el.previewScopeSelect.value = prevScope;
+      } else {
+        state.previewScope = 'all';
+        el.previewScopeSelect.value = 'all';
+      }
+
+      // Render kartu per GIF
+      el.gifList.innerHTML = '';
+      state.gifs.forEach((g, idx) => {
+        const p = g.processed;
+        const li = document.createElement('li');
+        li.className = 'flex items-center justify-between gap-2 p-2.5 rounded-xl bg-[#0b0d10] border border-[#1e2533] hover:border-slate-700 transition';
+        li.innerHTML = `
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-1.5">
+              <span class="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded bg-[#38bdf8]/15 text-[#38bdf8]">anim${idx + 1}</span>
+              <span class="text-xs font-medium text-slate-200 truncate" title="${g.name}">${g.name}</span>
+            </div>
+            <div class="text-[11px] font-mono text-slate-400 mt-1">
+              ${p.frameCount} frame • ${p.delayMs}ms • <span class="text-[#22c55e]">${(p.rleSize / 1024).toFixed(2)} KB</span>
+            </div>
+          </div>
+          <div class="flex items-center gap-1 shrink-0">
+            <button type="button" data-action="up" data-idx="${idx}" ${idx === 0 ? 'disabled' : ''} class="p-1.5 rounded-lg bg-[#131720] hover:bg-[#1e2533] disabled:opacity-30 text-slate-300 text-xs" title="Geser Naik">↑</button>
+            <button type="button" data-action="down" data-idx="${idx}" ${idx === state.gifs.length - 1 ? 'disabled' : ''} class="p-1.5 rounded-lg bg-[#131720] hover:bg-[#1e2533] disabled:opacity-30 text-slate-300 text-xs" title="Geser Turun">↓</button>
+            <button type="button" data-action="remove" data-idx="${idx}" class="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs" title="Hapus">✕</button>
+          </div>
+        `;
+        el.gifList.appendChild(li);
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // 4. LIVE OLED 128x64 PREVIEW PLAYER
+    // -------------------------------------------------------------------------
+    const oledCtx = el.oledCanvas.getContext('2d');
+
+    function drawBinaryFrameToOled(binMap) {
+      const imgData = oledCtx.createImageData(128, 64);
+      const data = imgData.data;
+      for (let i = 0; i < 128 * 64; i++) {
+        const pxIdx = i * 4;
+        if (binMap[i]) {
+          // Warna piksel OLED terang (putih kebiruan crisp)
+          data[pxIdx] = 224;
+          data[pxIdx + 1] = 242;
+          data[pxIdx + 2] = 254;
+          data[pxIdx + 3] = 255;
+        } else {
+          data[pxIdx] = 3;
+          data[pxIdx + 1] = 5;
+          data[pxIdx + 2] = 8;
+          data[pxIdx + 3] = 255;
+        }
+      }
+      oledCtx.putImageData(imgData, 0, 0);
+    }
+
+    function clearOledScreen() {
+      oledCtx.fillStyle = '#030508';
+      oledCtx.fillRect(0, 0, 128, 64);
+      el.previewStatusText.textContent = 'Belum ada GIF dimuat';
+    }
+
+    function getActivePlaylist() {
+      if (state.gifs.length === 0) return [];
+      if (state.previewScope === 'all') {
+        return state.gifs.map((g, i) => ({ label: `anim${i + 1} (${g.name})`, processed: g.processed }));
+      }
+      const foundIdx = state.gifs.findIndex(g => g.id === state.previewScope);
+      if (foundIdx >= 0) {
+        const g = state.gifs[foundIdx];
+        return [{ label: `anim${foundIdx + 1} (${g.name})`, processed: g.processed }];
+      }
+      return [];
+    }
+
+    function tickPreview() {
+      const playlist = getActivePlaylist();
+      if (playlist.length === 0) {
+        clearOledScreen();
+        return;
+      }
+
+      if (state.playAnimIdx >= playlist.length) state.playAnimIdx = 0;
+      const currentAnim = playlist[state.playAnimIdx];
+      const frames = currentAnim.processed.binaryFrames;
+      if (!frames || frames.length === 0) return;
+
+      if (state.playFrameIdx >= frames.length) state.playFrameIdx = 0;
+
+      // Render frame saat ini
+      drawBinaryFrameToOled(frames[state.playFrameIdx]);
+      el.previewStatusText.textContent = `${currentAnim.label} • Frame ${state.playFrameIdx + 1}/${frames.length} • ${currentAnim.processed.delayMs}ms`;
+
+      if (!state.isPlaying) return;
+
+      const delay = currentAnim.processed.delayMs || 80;
+      state.playTimer = setTimeout(() => {
+        state.playFrameIdx++;
+        if (state.playFrameIdx >= frames.length) {
+          state.playFrameIdx = 0;
+          state.playAnimIdx = (state.playAnimIdx + 1) % playlist.length;
+        }
+        tickPreview();
+      }, delay);
+    }
+
+    function restartPreviewLoop() {
+      if (state.playTimer) {
+        clearTimeout(state.playTimer);
+        state.playTimer = null;
+      }
+      state.playAnimIdx = 0;
+      state.playFrameIdx = 0;
+      tickPreview();
+    }
+
+    // -------------------------------------------------------------------------
+    // 5. PENANGANAN FILE UPLOAD & DEMO GENERATOR
+    // -------------------------------------------------------------------------
+    async function handleFiles(fileList) {
+      const files = Array.from(fileList).filter(f => f.type === 'image/gif' || f.name.toLowerCase().endsWith('.gif'));
+      if (files.length === 0) {
+        showToast('Pilih file berformat .GIF ya!', 'error');
+        return;
+      }
+
+      for (const file of files) {
+        try {
+          const buf = await file.arrayBuffer();
+          const decoded = await decodeGifFile(buf);
+          state.gifs.push({
+            id: 'gif_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+            name: file.name,
+            width: decoded.width,
+            height: decoded.height,
+            rawFrames: decoded.rawFrames,
+            processed: null
+          });
+        } catch (err) {
+          console.error(err);
+          showToast(`Gagal membaca ${file.name}: ${err.message}`, 'error');
+        }
+      }
+
+      reprocessAll();
+      showToast(`${files.length} GIF berhasil dikonversi ke RLE!`, 'success');
+    }
+
+    // Generator Contoh Animasi Mata Dasai Mochi (Kedip + Lirik Kiri-Kanan)
+    function loadDemoMochiEyes() {
+      const makeEyeFrame = (pupilOffsetX, eyeHeight, smileCurve) => {
+        const c = document.createElement('canvas');
+        c.width = 128;
+        c.height = 64;
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, 128, 64);
+
+        ctx.fillStyle = '#fff';
+        const eyeW = 28;
+        const yCenter = 28;
+        const topY = Math.round(yCenter - eyeHeight / 2);
+
+        // Mata Kiri & Kanan (Rounded Rect)
+        const drawRoundRect = (x, y, w, h, r) => {
+          const rad = Math.min(r, w / 2, h / 2);
+          ctx.beginPath();
+          ctx.roundRect(x, y, w, h, rad);
+          ctx.fill();
+        };
+        drawRoundRect(16 + pupilOffsetX, topY, eyeW, eyeHeight, 8);
+        drawRoundRect(84 + pupilOffsetX, topY, eyeW, eyeHeight, 8);
+
+        // Mulut Melengkung
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 4;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(52 + Math.round(pupilOffsetX * 0.5), 46);
+        ctx.quadraticCurveTo(64 + Math.round(pupilOffsetX * 0.5), 46 + smileCurve, 76 + Math.round(pupilOffsetX * 0.5), 46);
+        ctx.stroke();
+
+        return ctx.getImageData(0, 0, 128, 64).data;
+      };
+
+      const demo1Frames = [
+        { rgba: makeEyeFrame(0, 30, 8), delay: 600 },
+        { rgba: makeEyeFrame(0, 14, 8), delay: 70 },
+        { rgba: makeEyeFrame(0, 4, 8), delay: 70 },
+        { rgba: makeEyeFrame(0, 16, 8), delay: 70 },
+        { rgba: makeEyeFrame(0, 30, 8), delay: 500 },
+        { rgba: makeEyeFrame(-6, 30, 9), delay: 350 },
+        { rgba: makeEyeFrame(6, 30, 9), delay: 350 },
+        { rgba: makeEyeFrame(0, 30, 8), delay: 400 },
+      ];
+
+      state.gifs.push({
+        id: 'demo_' + Date.now(),
+        name: 'demo_mochi_blink.gif',
+        width: 128,
+        height: 64,
+        rawFrames: demo1Frames,
+        processed: null
+      });
+
+      reprocessAll();
+      showToast('Contoh animasi mata dimuat!', 'success');
+    }
+
+    // -------------------------------------------------------------------------
+    // 6. EVENT LISTENERS
+    // -------------------------------------------------------------------------
+    el.gifInput.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files.length > 0) {
+        handleFiles(e.target.files);
+        e.target.value = '';
+      }
+    });
+
+    // Drag and drop events
+    ['dragenter', 'dragover'].forEach(evtName => {
+      el.dropZone.addEventListener(evtName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        el.dropZone.classList.add('border-[#38bdf8]', 'bg-[#38bdf8]/10');
+      });
+    });
+
+    ['dragleave', 'drop'].forEach(evtName => {
+      el.dropZone.addEventListener(evtName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        el.dropZone.classList.remove('border-[#38bdf8]', 'bg-[#38bdf8]/10');
+      });
+    });
+
+    el.dropZone.addEventListener('drop', (e) => {
+      if (e.dataTransfer && e.dataTransfer.files) {
+        handleFiles(e.dataTransfer.files);
+      }
+    });
+
+    // Reorder / Remove GIF di daftar
+    el.gifList.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-action]');
+      if (!btn) return;
+      const action = btn.dataset.action;
+      const idx = parseInt(btn.dataset.idx, 10);
+
+      if (action === 'up' && idx > 0) {
+        [state.gifs[idx - 1], state.gifs[idx]] = [state.gifs[idx], state.gifs[idx - 1]];
+        reprocessAll();
+      } else if (action === 'down' && idx < state.gifs.length - 1) {
+        [state.gifs[idx + 1], state.gifs[idx]] = [state.gifs[idx], state.gifs[idx + 1]];
+        reprocessAll();
+      } else if (action === 'remove') {
+        state.gifs.splice(idx, 1);
+        reprocessAll();
+      }
+    });
+
+    // Threshold slider (debounce ringan untuk responsivitas mulus)
+    let sliderDebounce = null;
+    el.thresholdSlider.addEventListener('input', (e) => {
+      state.threshold = parseInt(e.target.value, 10);
+      el.thresholdVal.textContent = state.threshold;
+      clearTimeout(sliderDebounce);
+      sliderDebounce = setTimeout(() => reprocessAll(), 60);
+    });
+
+    // Scale mode toggle
+    el.scaleBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.scaleMode = btn.dataset.scale;
+        el.scaleBtns.forEach(b => {
+          const active = b.dataset.scale === state.scaleMode;
+          b.className = active
+            ? 'scale-btn px-3 py-2 text-xs font-medium rounded-xl border border-[#38bdf8] bg-[#38bdf8]/15 text-white transition'
+            : 'scale-btn px-3 py-2 text-xs font-medium rounded-xl border border-[#1e2533] bg-[#0b0d10] text-slate-400 hover:text-slate-200 transition';
+        });
+        reprocessAll();
+      });
+    });
+
+    // Frame step selector
+    el.frameStepSelect.addEventListener('change', (e) => {
+      state.frameStep = parseInt(e.target.value, 10) || 1;
+      reprocessAll();
+    });
+
+    // Custom delay input
+    el.customDelayInput.addEventListener('input', (e) => {
+      const val = parseInt(e.target.value, 10);
+      state.customDelay = !isNaN(val) && val > 0 ? val : null;
+      reprocessAll();
+    });
+
+    // Invert checkbox
+    el.invertCheck.addEventListener('change', (e) => {
+      state.invert = e.target.checked;
+      reprocessAll();
+    });
+
+    // Reset settings
+    el.btnResetSettings.addEventListener('click', () => {
+      state.threshold = 90;
+      state.invert = false;
+      state.scaleMode = 'fit';
+      state.frameStep = 1;
+      state.customDelay = null;
+
+      el.thresholdSlider.value = 90;
+      el.thresholdVal.textContent = '90';
+      el.invertCheck.checked = false;
+      el.frameStepSelect.value = '1';
+      el.customDelayInput.value = '';
+      el.scaleBtns.forEach(b => {
+        const active = b.dataset.scale === 'fit';
+        b.className = active
+          ? 'scale-btn px-3 py-2 text-xs font-medium rounded-xl border border-[#38bdf8] bg-[#38bdf8]/15 text-white transition'
+          : 'scale-btn px-3 py-2 text-xs font-medium rounded-xl border border-[#1e2533] bg-[#0b0d10] text-slate-400 hover:text-slate-200 transition';
+      });
+      reprocessAll();
+    });
+
+    // Preview scope & Play/Pause
+    el.previewScopeSelect.addEventListener('change', (e) => {
+      state.previewScope = e.target.value;
+      restartPreviewLoop();
+    });
+
+    el.btnPlayPause.addEventListener('click', () => {
+      state.isPlaying = !state.isPlaying;
+      el.playPauseIcon.textContent = state.isPlaying ? '⏸' : '▶';
+      el.playPauseLabel.textContent = state.isPlaying ? 'Pause' : 'Play';
+      if (state.isPlaying) {
+        tickPreview();
+      } else if (state.playTimer) {
+        clearTimeout(state.playTimer);
+      }
+    });
+
+    // Salin Kode .INO (Kompatibel iframe dengan document.execCommand('copy'))
+    el.btnCopyIno.addEventListener('click', () => {
+      if (state.gifs.length === 0) {
+        showToast('Upload file .GIF dulu sebelum menyalin kode.', 'error');
+        return;
+      }
+      el.inoOutput.focus();
+      el.inoOutput.select();
+      el.inoOutput.setSelectionRange(0, el.inoOutput.value.length);
+      try {
+        const ok = document.execCommand('copy');
+        if (ok) {
+          el.copyBtnText.textContent = 'Tersalin!';
+          showToast('Kode .INO berhasil disalin ke clipboard!', 'success');
+          setTimeout(() => {
+            el.copyBtnText.textContent = 'Salin Kode .INO';
+          }, 2000);
+        } else {
+          showToast('Gagal menyalin otomatis, tekan Ctrl+C manual.', 'error');
+        }
+      } catch (err) {
+        showToast('Gagal menyalin otomatis, tekan Ctrl+C manual.', 'error');
+      }
+    });
+
+    // Download file dasai_mochi_1file.ino
+    el.btnDownloadIno.addEventListener('click', () => {
+      if (state.gifs.length === 0) {
+        showToast('Upload file .GIF dulu sebelum download.', 'error');
+        return;
+      }
+      const blob = new Blob([state.inoCode], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'dasai_mochi_1file.ino';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('File dasai_mochi_1file.ino sedang didownload!', 'success');
+    });
+
+    // Demo & Clear All
+    el.btnLoadDemo.addEventListener('click', loadDemoMochiEyes);
+    el.btnClearAll.addEventListener('click', () => {
+      state.gifs = [];
+      reprocessAll();
+      showToast('Semua animasi dihapus.', 'info');
+    });
+
+    // Inisialisasi awal
+    generateInoCode();
+    clearOledScreen();
+  </script>
+</body>
+</html>
